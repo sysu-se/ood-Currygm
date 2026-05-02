@@ -1,11 +1,25 @@
 <script>
+	import game from '@sudoku/game';
 	import { userGrid } from '@sudoku/stores/grid';
 	import { cursor } from '@sudoku/stores/cursor';
 	import { notes } from '@sudoku/stores/notes';
 	import { candidates } from '@sudoku/stores/candidates';
+	import { candidateHint } from '@sudoku/stores/candidateHint';
 
 	// TODO: Improve keyboardDisabled
 	import { keyboardDisabled } from '@sudoku/stores/keyboard';
+
+	/**
+	 * 功能：探索模式落子后刷新当前格子的候选/失败提示。
+	 * 上下文：键盘输入不会改变 cursor，因此需要主动查询领域层探索状态。
+	 */
+	function refreshExploreHint() {
+		if (!game.isExploring() || $cursor.x === null || $cursor.y === null) {
+			return;
+		}
+
+		candidateHint.show(game.getExploreCandidateHint($cursor.y, $cursor.x), $cursor);
+	}
 
 	function handleKeyButton(num) {
 		if (!$keyboardDisabled) {
@@ -16,12 +30,14 @@
 					candidates.add($cursor, num);
 				}
 				userGrid.set($cursor, 0);
+				refreshExploreHint();
 			} else {
 				if ($candidates.hasOwnProperty($cursor.x + ',' + $cursor.y)) {
 					candidates.clear($cursor);
 				}
 
 				userGrid.set($cursor, num);
+				refreshExploreHint();
 			}
 		}
 	}

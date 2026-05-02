@@ -1,11 +1,16 @@
 <script>
 	import { BOX_SIZE } from '@sudoku/constants';
+	import game from '@sudoku/game';
 	import { gamePaused } from '@sudoku/stores/game';
-	import { grid, userGrid, invalidCells } from '@sudoku/stores/grid';
+	import { grid, userGrid, invalidCells, isExploring } from '@sudoku/stores/grid';
 	import { settings } from '@sudoku/stores/settings';
 	import { cursor } from '@sudoku/stores/cursor';
 	import { candidates } from '@sudoku/stores/candidates';
+	import { candidateHint } from '@sudoku/stores/candidateHint';
+	import { nextStepHint } from '@sudoku/stores/nextStepHint';
 	import Cell from './Cell.svelte';
+
+	let lastExploreCursorKey = null;
 
 	function isSelected(cursorStore, x, y) {
 		return cursorStore.x === x && cursorStore.y === y;
@@ -27,6 +32,22 @@
 
 		return gridStore[cursorStore.y][cursorStore.x];
 	}
+
+	// 功能：探索模式下选中格子时自动展示候选数。
+	// 上下文：这让探索模式不需要用户额外点击候选提示按钮。
+	$: {
+		const exploreCursorKey = $isExploring && $cursor.x !== null && $cursor.y !== null
+			? `${$cursor.x},${$cursor.y}`
+			: null;
+
+		if (exploreCursorKey !== lastExploreCursorKey) {
+			lastExploreCursorKey = exploreCursorKey;
+
+			if (exploreCursorKey !== null) {
+				candidateHint.show(game.getExploreCandidateHint($cursor.y, $cursor.x), $cursor);
+			}
+		}
+	}
 </script>
 
 <div class="board-padding relative z-10">
@@ -35,7 +56,7 @@
 	</div>
 	<div class="board-padding absolute inset-0 flex justify-center">
 
-		<div class="bg-white shadow-2xl rounded-xl overflow-hidden w-full h-full max-w-xl grid" class:bg-gray-200={$gamePaused}>
+		<div class="bg-white shadow-2xl rounded-xl overflow-visible w-full h-full max-w-xl grid" class:bg-gray-200={$gamePaused}>
 
 			{#each $userGrid as row, y}
 				{#each row as value, x}
@@ -43,12 +64,14 @@
 					      cellY={y + 1}
 					      cellX={x + 1}
 					      candidates={$candidates[x + ',' + y]}
+					      candidateHint={$candidateHint}
 					      disabled={$gamePaused}
 					      selected={isSelected($cursor, x, y)}
 					      userNumber={$grid[y][x] === 0}
 					      sameArea={$settings.highlightCells && !isSelected($cursor, x, y) && isSameArea($cursor, x, y)}
 					      sameNumber={$settings.highlightSame && value && !isSelected($cursor, x, y) && getValueAtCursor($userGrid, $cursor) === value}
-					      conflictingNumber={$settings.highlightConflicting && $grid[y][x] === 0 && $invalidCells.includes(x + ',' + y)} />
+					      conflictingNumber={$settings.highlightConflicting && $grid[y][x] === 0 && $invalidCells.includes(x + ',' + y)}
+					      nextStepNumber={$nextStepHint.row === y && $nextStepHint.col === x} />
 				{/each}
 			{/each}
 
